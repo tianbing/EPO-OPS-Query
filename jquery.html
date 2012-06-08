@@ -1,0 +1,173 @@
+<html>                                                                  
+ <head>                                                                  
+ <script type="text/javascript" src="jquery-1.7.2.js"></script>   
+<script type="text/javascript" src="jQuery.twFile.js"></script>    
+<script type="text/javascript">
+function loadXML(fileName, successHandler, failureHandler) {
+        $.ajax({
+            type: "GET",
+            url: fileName,
+            dataType: ($.browser.msie) ? "text" : "xml",
+            success: function(data, textStatus, jqXHR){
+                var xml;
+                if (typeof data == "string") {
+                    xml = new ActiveXObject("Microsoft.XMLDOM");
+                    xml.async = false;
+                    xml.loadXML(data);
+                } else {
+                    xml = data;
+                }
+                successHandler(xml);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                if(failureHandler != null) {
+                    failureHandler(jqXHR, textStatus, errorThrown);
+                    return;
+                }
+                _defaultAjaxError(jqXHR, textStatus, errorThrown);
+            }
+        });
+    }
+
+function defaultAjaxError(jqXHR, textStatus, errorThrown) {
+        alert(jqXHR.status + ' * ' + jqXHR.statusText + ' * ' + jqXHR.responseText );
+        alert(textStatus);
+	}
+function save_XML(fileName,xml)
+{
+	var fso = new ActiveXObject("Scripting.FileSystemObject");
+	var file = fso.CreateTextFile(fileName,1,true);
+	file.Write(xml);
+	file.Close();
+	// Instantiate a DOM object.
+	//var filepath = document.location.href; // Get the current file
+	//var filepath = fileName;
+	//filepath = $.twFile.convertUriToLocalPath(filepath); // Convert the path to a readable format
+	//alert(fileName);
+	//$.twFile.save(fileName, xml)
+
+	//var doc = new ActiveXObject("MSXML2.DOMDocument.5.0");
+	//doc.async = false;
+	//doc.resolveExternals = false;
+	//doc.validateOnParse = false;
+	// Load an XML file into the DOM instance.
+	//doc.loadXML(xml);
+	// Save the dom to a file.
+	//doc.save(fileName);
+	
+}
+
+
+	
+</script>     
+<script type="text/javascript">
+$().ready(function()
+{
+	window.onerror=fnErrorTrap;
+	function fnErrorTrap(sMsg,sUrl,sLine){
+		$('div.status').append('Ajax failed!' + sMsg);
+	};
+	$(window).error(function(msg, url, line){  
+  		$('div.status').append(msg); 
+	});
+	$("#pn").focus();
+	$("#test").click(function() {
+		//2012-4-30
+		loadXML("test.xml",test_xml_success,test_xml_fail);
+	});
+	
+	$("#send").click(function() {
+		var url_upper = "http://ops.epo.org/2.6.2/rest-services/published-data/publication/docdb/";
+		var url_lower = "/biblio.js?callback=?";
+		var pn_number = $("#pn").val();
+  		$('div.status').text('Ajax proceeding...');
+		$.getJSON(url_upper + pn_number + url_lower ,function(data)
+		{
+			//alert(data["ops:world-patent-data"]["exchange-documents"]["exchange-document"]["@family-id"]);
+			$('div.result').text(data["ops:world-patent-data"]["exchange-documents"]["exchange-document"]["@family-id"]);
+			$('div.status').text('Ajax done!');
+		});
+	});
+	$("#send_2").click(function() {
+		var url_upper = "http://ops.epo.org/2.6.2/rest-services/family/publication/docdb/";
+		var url_lower = "/biblio,legal.js?callback=?";
+		var pn_number = $("#pn").val();
+  		$('div.status').text('Ajax proceeding...');
+		var jqxhr = $.getJSON(url_upper + pn_number + url_lower ,function(data,json_status)
+		{
+			//$('div.status').append(json_status);
+			if(json_status = 'success')
+			{
+				var oData = data['ops:world-patent-data'];
+				if (oData['ops:patent-family'] != null && oData['ops:patent-family'] != '') {
+    					$.each($(oData['ops:patent-family']['ops:family-member']), function(iIndex, mValue) {
+      						// LOOP THROUGH EACH FAMILY MEMBER AND DO STUFF!
+						$.each($(mValue['publication-reference']['document-id']),function(doc_index, doc_value){
+							if(doc_index == 0){
+								$('div.result').append('<p>' + doc_value['country']['$'] + doc_value['doc-number']['$']+ doc_value['kind']['$'] + '</p>');
+							}
+						});
+						//$('div.result').append(iIndex + mValue + ';');
+					
+    					});
+  				}
+				else{
+					$('div.status').append(data);
+				}
+				//alert(oData);
+				$('div.status').append('Ajax done!');
+				
+			}
+			else
+			{
+				$('div.status').append('Ajax failed!');
+			}
+		})
+		.success(function() { 
+			//alert("second success"); 
+		})
+		.error(function(e) { 
+			//alert("error"); 
+			$('div.status').append('Ajax failed!' + e.status);
+		})
+		.complete(function() { 
+			//alert("complete"); 
+			$('div.status').append('Ajax complete!');
+		}); //end of getjson
+	});
+});	
+function test_xml_success(xml)
+{
+	//alert(xml.xml);
+	save_XML("E:\\2012-4-20-document-backup\\download\\Project\\test3.xml",xml.xml)
+}
+function test_xml_fail(xml)
+{
+}
+
+
+</script>                                      
+                        
+ </head>                                                                 
+ <body>                                                                  
+   <!-- we will add our HTML content here -->  
+  
+  
+
+<input type="button" id="send" value = "著录项目获取">
+</input>    
+
+<input type="button" id="send_2" value = "同族获取">
+</input>                       
+
+
+
+<input type="text" name="patent_number" id="pn"  value="EP1000000.A1">
+</input>
+<input type="button" name="test_xml" id="test"  value="测试XML">
+</input>
+
+<div class="result"></div>
+<div class="status"></div>
+ </body>                                                                 
+</html>
